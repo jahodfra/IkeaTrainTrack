@@ -6,6 +6,7 @@
 # for elevated track every piece needs 1 pillar ending piece needs two.
 # that brings number of elevated tracks to maximaly 1x3 or 2x1
 
+import argparse
 import collections
 import itertools
 import math
@@ -295,14 +296,40 @@ def validate_path(path, material):
 
 
 def main():
-    material = Material(turns=8, straight=8, ups=2, downs=2, pillars=4)
+    parser = argparse.ArgumentParser(description='find all closed paths')
+    parser.add_argument(
+        '--turns',
+        dest='turns', type=int, default=12, help='number of turn segments')
+    parser.add_argument(
+        '--straight',
+        dest='straight', type=int, default=4,
+        help='number of straight segments')
+    parser.add_argument(
+        '--ups',
+        dest='ups', type=int, default=2, help='number of uphill segments')
+    parser.add_argument(
+        '--downs',
+        dest='downs', type=int, default=2, help='number of downhill segments')
+    parser.add_argument(
+        '--pillars',
+        dest='pillars', type=int, default=4, help='number of pillars')
+    args = parser.parse_args()
+    material = Material(
+        turns=args.turns,
+        straight=args.straight,
+        ups=args.ups,
+        downs=args.downs,
+        pillars=args.pillars)
+
+    filename = 'paths.pickle'
     try:
-        paths = pickle.load(open('found_paths.pickle', 'rb'))
+        paths = pickle.load(open(filename, 'rb'))
     except IOError:
         paths =compute_all_paths(material)
-        pickle.dump(paths, open('found_paths.pickle', 'wb'))
+        pickle.dump(paths, open(filename, 'wb'))
     paths = [p for p in paths if validate_path(p, material)]
     print('number of unique paths:', len(paths))
 
 
-main()
+if __name__ == '__main__':
+    main()
