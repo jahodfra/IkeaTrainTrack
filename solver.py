@@ -8,6 +8,7 @@
 
 import argparse
 import collections
+import copy
 import itertools
 import math
 import pickle
@@ -79,92 +80,92 @@ R_SHIFT = (
     (1, 0, 0, 1),
 )
 
+# Represents Segment: (a, b) where change in pillars is a*level+b
+PILLARS = {
+    'S': (-1, 0),
+    'U': (-2, 0),
+    'D': (-1, 1),
+    'R': (-1, 0),
+    'L': (-1, 0),
+}
+
+def _neighbours(angle):
+    return {
+        'S': STR_SHIFT[angle] + (0, 0, -1, 0, 0, 0),
+        'U': STR_SHIFT[angle] + (0, 1, 0, 0, -1, 0),
+        'D': STR_SHIFT[angle] + (0, -1, 0, 0, 0, -1),
+        'R': R_SHIFT[angle]   + (1, 0, 0, -1, 0, 0),
+        'L': R_SHIFT[angle-1] + (-1, 0, 0, -1, 0, 0),
+    }
+
+def get_neighbours_map():
+    neighbours_map = {}
+    for angle in range(8):
+        neighbours_map[angle] = _neighbours(angle)
+    return neighbours_map
+
 def dynamic_programming(material):
+    neighbours_map = get_neighbours_map()
     border = set()
-    border.add(State(pos=Pos(0, 0, 0, 0), angle=0, level=0, material=material))
+    #border.add(State(pos=Pos(0, 0, 0, 0), angle=0, level=0, material=material))
+    # 7,7,7,7,3,3,5,5,5,5,5 = 28+6+25 = 59bit < 64bit
+    # We can encode whole configuration into one uint64
+    # ax, bx, ay, by, angle, level, ...
+    border.add((0, 0, 0, 0, 0, 0, material.straight, material.turns, material.ups, material.downs, material.pillars))
     visited = set()
     for _ in range(material_pieces(material)):
         new_border = set()
-        for s in border:
-            m = s.material
-            turns, angle, level = m.turns, s.angle, s.level
-            if turns < angle and turns < 7 - angle:
-                # It's not possible to turn back
-                # with the current number of turns.
-                continue
-            dist_from_origin = max(map(abs, s.pos))
-            if dist_from_origin > material_pieces(m):
-                # It's not possible to return back
-                # with the current number of segments.
-                continue
-            if m.pillars < level or (m.downs < level):
-                continue
-            if m.straight > 0:
-                # Straight segment
-                # We suppose one pillar per segment and level.
-                npos = add_pos(s.pos, STR_SHIFT[angle])
-                nstate = State(npos, angle, level, m._replace(straight=m.straight-1, pillars=m.pillars-level))
-                new_border.add(nstate)
-            if m.ups > 0:
-                # Up slope
-                # We suppose two pillars per segment and level.
-                npos = add_pos(s.pos, STR_SHIFT[angle])
-                nstate = State(npos, angle, level+1, m._replace(ups=m.ups-1, pillars=m.pillars - 2*level))
-                new_border.add(nstate)
-            if m.downs > 0 and level > 0:
-                # Down slope
-                # We suppose two pillars per segment and final level.
-                # If the previous segment wasn't up slope we should
-                # add level-times pillars. We don't know that prev. segment
-                # in this alg. so we relax this condition.
-                npos = add_pos(s.pos, STR_SHIFT[angle])
-                nstate = State(npos, angle, level-1, m._replace(downs=m.downs-1, pillars=m.pillars - (level-1)))
-                new_border.add(nstate)
-            if m.turns > 0:
-                # Turn left, right
-                # We suppose one pillar per segment and level.
-                npillars = m.pillars - level
-                npos = add_pos(s.pos, R_SHIFT[angle])
-                nstate = State(npos, (angle+1) % 8, level, m._replace(turns=turns-1, pillars=npillars))
-                new_border.add(nstate)
-                npos = add_pos(s.pos, R_SHIFT[(angle - 1) % 8])
-                nstate = State(npos, (angle-1) % 8, level, m._replace(turns=turns-1, pillars=npillars))
-                new_border.add(nstate)
+        for a in border:
+            # alpha(pos(pillars(x))
+            # pillars(pos-1(alpha-1(y)))
+            for segment, b in neighbours_map[a[4]].items():
+                levela, levelb = PILLARS[segment]
+                level = a[5]
+                pillars = a[10] + levela * level + levelb
+                ns = (a[0]+b[0], a[1]+b[1], a[2]+b[2], a[3]+b[3], (a[4]+b[4])%8, a[5]+b[5], a[6]+b[6], a[7]+b[7], a[8]+b[8], a[9]+b[9], pillars)
+                angle, level, straight, turns, ups, downs = ns[4:10]
+                if turns < angle < 7 - turns:
+                    # It's not possible to turn back
+                    # with the current number of turns.
+                    continue
+                if pillars < level or downs < level:
+                    continue
+                if any(x < 0 for x in ns[5:]):
+                    continue
+                if max(map(abs, ns[:4])) > sum(ns[6:10]):
+                    # It's not possible to return back
+                    # with the current number of segments.
+                    continue
+                new_border.add(ns)
         visited.update(new_border)
         border = new_border
     return visited
-
-
-def get_neighbours(s):
-    m = s.material
-    angle, level = s.angle, s.level
-
-    npos = add_pos(s.pos, STR_SHIFT[(angle - 4) % 8])
-    straight = State(npos, angle, level, m._replace(straight=m.straight+1, pillars=m.pillars+level))
-    up       = State(npos, angle, level-1, m._replace(ups=m.ups+1, pillars=m.pillars+2*(level-1)))
-    down     = State(npos, angle, level+1, m._replace(downs=m.downs+1, pillars=m.pillars+level))
-
-    npos = add_pos(s.pos, R_SHIFT[(angle - 5) % 8])
-    right = State(npos, (angle-1) % 8, level, m._replace(turns=m.turns+1, pillars=m.pillars+level))
-
-    npos = add_pos(s.pos, R_SHIFT[(angle - 4) % 8])
-    left = State(npos, (angle+1) % 8, level, m._replace(turns=m.turns+1, pillars=m.pillars+level))
-
-    return [('S', straight), ('U', up), ('D', down), ('R', right), ('L', left)]
     
     
 def back_propagation(visited, material):
-    end_pos = Pos(0, 0, 0, 0)
-    end_state = State(end_pos, 0, 0, material)
+    neighbours_map = get_neighbours_map()
+    # turn right, turn left has to be changed differently
+    backward_map = copy.deepcopy(neighbours_map)
+    for angle in range(8):
+        backward_map[angle]['R'] = neighbours_map[(angle-1)%8]['R']
+        backward_map[angle]['L'] = neighbours_map[(angle+1)%8]['L']
+
+    end_state = (0, 0, 0, 0, 0, 0, material.straight, material.turns, material.ups, material.downs, material.pillars)
     paths = []
     final = []
     for s in visited:
-        if s.pos == end_pos and s.angle == s.level == 0 and s.material != material:
+        if s[:6] == (0, 0, 0, 0, 0, 0):
             paths.append(('', s))
     while paths:
         new_paths = []
-        for path, s in paths:
-            for segment, ps in get_neighbours(s):
+        for path, a in paths:
+            #for segment, ps in get_neighbours(a):
+            for segment, b in backward_map[a[4]].items():
+                levela, levelb = PILLARS[segment]
+                level = a[5] - b[5]
+                # pillars have to be counted from the previous level
+                pillars = a[10] - (levela * level + levelb)
+                ps = (a[0]-b[0], a[1]-b[1], a[2]-b[2], a[3]-b[3], (a[4]-b[4])%8, level, a[6]-b[6], a[7]-b[7], a[8]-b[8], a[9]-b[9], pillars)
                 if ps == end_state:
                     final.append(segment + path)
                 elif ps in visited:
@@ -325,7 +326,7 @@ def main():
     try:
         paths = pickle.load(open(filename, 'rb'))
     except IOError:
-        paths =compute_all_paths(material)
+        paths = compute_all_paths(material)
         pickle.dump(paths, open(filename, 'wb'))
     paths = [p for p in paths if validate_path(p, material)]
     print('number of unique paths:', len(paths))
