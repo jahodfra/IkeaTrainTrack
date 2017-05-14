@@ -8,12 +8,12 @@
 
 import argparse
 import collections
-import copy
 import itertools
 import math
 import pickle
 import string
-import time
+
+from dynamic import find_all_paths
 
 
 def shifts(track):
@@ -42,94 +42,9 @@ def normalize_track(track):
 
 Material = collections.namedtuple('Material', 'straight turns ups, downs pillars')
 
-STR_SHIFT = (
-    (1, 1, 0, 0),
-    (1, 0, -1, 0),
-    (0, 0, -1, -1),
-    (-1, 0, -1, 0),
-    (-1, -1, 0, 0),
-    (-1, 0, 1, 0),
-    (0, 0, 1, 1),
-    (1, 0, 1, 0),
-)
-
-R_SHIFT = (
-    (1, 0, 0, -1),
-    (0, 1, -1, 0),
-    (0, -1, -1, 0),
-    (-1, 0, 0, -1),
-    (-1, 0, 0, 1),
-    (0, -1, 1, 0),
-    (0, 1, 1, 0),
-    (1, 0, 0, 1),
-)
-
-# Represents Segment: (a, b) where change in pillars is a*level+b
-PILLARS = {
-    'S': (-1, 0),
-    'U': (-2, 0),
-    'D': (-1, 1),
-    'R': (-1, 0),
-    'L': (-1, 0),
-}
-
-def _neighbours(angle):
-    return {
-        'S': STR_SHIFT[angle] + (0, 0, -1, 0, 0, 0),
-        'U': STR_SHIFT[angle] + (0, 1, 0, 0, -1, 0),
-        'D': STR_SHIFT[angle] + (0, -1, 0, 0, 0, -1),
-        'R': R_SHIFT[angle]   + (1, 0, 0, -1, 0, 0),
-        'L': R_SHIFT[angle-1] + (-1, 0, 0, -1, 0, 0),
-    }
-
-def get_neighbours_map():
-    neighbours_map = {}
-    for angle in range(8):
-        neighbours_map[angle] = _neighbours(angle)
-    return neighbours_map
-
-from dynamic import dynamic_programming
-    
-    
-def back_propagation(visited, material):
-    neighbours_map = get_neighbours_map()
-    # turn right, turn left has to be changed differently
-    backward_map = copy.deepcopy(neighbours_map)
-    for angle in range(8):
-        backward_map[angle]['R'] = neighbours_map[(angle-1)%8]['R']
-        backward_map[angle]['L'] = neighbours_map[(angle+1)%8]['L']
-
-    end_state = (0, 0, 0, 0, 0, 0, material.straight, material.turns, material.ups, material.downs, material.pillars)
-    paths = []
-    final = []
-    for s in visited:
-        if s[:6] == (0, 0, 0, 0, 0, 0):
-            paths.append(('', s))
-    while paths:
-        new_paths = []
-        for path, a in paths:
-            #for segment, ps in get_neighbours(a):
-            for segment, b in backward_map[a[4]].items():
-                levela, levelb = PILLARS[segment]
-                level = a[5] - b[5]
-                # pillars have to be counted from the previous level
-                pillars = a[10] - (levela * level + levelb)
-                ps = (a[0]-b[0], a[1]-b[1], a[2]-b[2], a[3]-b[3], (a[4]-b[4])%8, level, a[6]-b[6], a[7]-b[7], a[8]-b[8], a[9]-b[9], pillars)
-                if ps == end_state:
-                    final.append(segment + path)
-                elif ps in visited:
-                    new_paths.append((segment + path, ps))
-        paths = new_paths
-    return final
-
 
 def compute_all_paths(material):
-    t = time.clock()
-    visited = dynamic_programming(material)
-    print('frw took {:.2f}s'.format(time.clock() - t))
-    t = time.clock()
-    paths = back_propagation(visited, material)
-    print('back took {:.2f}s'.format(time.clock() - t))
+    paths = find_all_paths(material)
     print('number of paths:', len(paths))
     paths = set(map(normalize_track, paths))
     print('number of unique paths:', len(paths))
