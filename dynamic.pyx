@@ -1,6 +1,3 @@
-def material_pieces(m):
-    return m.straight + m.turns + m.ups + m.downs
-
 STR_SHIFT = (
     (1, 1, 0, 0),
     (1, 0, -1, 0),
@@ -41,17 +38,16 @@ def _neighbours(angle):
         R_SHIFT[angle-1] + (-1, 0, 0, -1, 0, 0),
     ]
 
-def get_neighbours_map():
-    neighbours_map = {}
-    for angle in range(8):
-        neighbours_map[angle] = _neighbours(angle)
-    return neighbours_map
-
 def dynamic_programming(material):
     cdef int levela, levelb, level, pillars, segment
     cdef int angle, straight, turns, ups, downs
-    cdef int ax, bx, ay, by
-    neighbours_map = get_neighbours_map()
+    cdef int ax, bx, ay, by, bi
+    cdef int[400] neighbours_map
+    # 8 * 5 * 10
+    for angle in range(8):
+        for segment, vect in enumerate(_neighbours(angle)):
+            for i, n in enumerate(vect):
+                neighbours_map[angle*50+segment*10+i] = n
     border = set()
     #border.add(State(pos=Pos(0, 0, 0, 0), angle=0, level=0, material=material))
     # 7,7,7,7,3,3,5,5,5,5,5 = 28+6+25 = 59bit < 64bit
@@ -59,29 +55,28 @@ def dynamic_programming(material):
     # ax, bx, ay, by, angle, level, ...
     border.add((0, 0, 0, 0, 0, 0, material.straight, material.turns, material.ups, material.downs, material.pillars))
     visited = set()
-    for _ in range(material_pieces(material)):
+    for _ in range(sum([material.straight, material.turns, material.ups, material.downs])):
         new_border = set()
         for a in border:
             # alpha(pos(pillars(x))
             # pillars(pos-1(alpha-1(y)))
             angle = a[4]
-            na = neighbours_map[angle]
             for segment in range(5):
-                b = na[segment]
+                bi = angle*50 + segment*10
                 levela = PILLARS[2*segment]
                 levelb = PILLARS[2*segment + 1]
                 level = a[5]
                 pillars = a[10] + levela * level + levelb
-                level += b[5]
-                ax = a[0] + b[0]
-                bx = a[1] + b[1]
-                ay = a[2] + b[2]
-                by = a[3] + b[3]
-                angle = (angle + b[4]) % 8
-                straight = a[6] + b[6]
-                turns = a[7] + b[7]
-                ups = a[8] + b[8]
-                downs = a[9] + b[9]
+                ax = a[0] + neighbours_map[bi+0]
+                bx = a[1] + neighbours_map[bi+1]
+                ay = a[2] + neighbours_map[bi+2]
+                by = a[3] + neighbours_map[bi+3]
+                angle = (angle + neighbours_map[bi+4]) % 8
+                level += neighbours_map[bi+5]
+                straight = a[6] + neighbours_map[bi+6]
+                turns = a[7] + neighbours_map[bi+7]
+                ups = a[8] + neighbours_map[bi+8]
+                downs = a[9] + neighbours_map[bi+9]
                 if turns < angle < 7 - turns:
                     # It's not possible to turn back
                     # with the current number of turns.
