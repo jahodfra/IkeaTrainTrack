@@ -140,6 +140,8 @@ def dynamic_programming(material):
         visited.update(new_border)
         border = new_border
     return visited
+
+from dynamic import dynamic_programming
     
     
 def back_propagation(visited, material):
