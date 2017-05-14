@@ -53,6 +53,11 @@ def dynamic_programming(material):
     # 7,7,7,7,3,3,5,5,5,5,5 = 28+6+25 = 59bit < 64bit
     # We can encode whole configuration into one uint64
     # ax, bx, ay, by, angle, level, ...
+    # Because sqrt(2) is irational number we have to track numbers in
+    # the following base.
+    # ax, ay is position in the grid in multiples of sqrt(2)/2 ~ 0.71
+    # bx, by is position in the grid in multiples of 1-sqrt(2)/2 ~ 0.29
+
     border.add((0, 0, 0, 0, 0, 0, material.straight, material.turns, material.ups, material.downs, material.pillars))
     visited = set()
     for _ in range(sum([material.straight, material.turns, material.ups, material.downs])):
