@@ -78,17 +78,26 @@ def dynamic_programming(material):
                 levela = PILLARS[2*segment]
                 levelb = PILLARS[2*segment + 1]
                 level = a[5]
-                pillars = a[10] + levela * level + levelb
-                ax = a[0] + neighbours_map[bi+0]
-                bx = a[1] + neighbours_map[bi+1]
-                ay = a[2] + neighbours_map[bi+2]
-                by = a[3] + neighbours_map[bi+3]
+                pillars = a[10]
+                ax = a[0]
+                bx = a[1]
+                ay = a[2]
+                by = a[3]
+                straight = a[6]
+                turns = a[7]
+                ups = a[8]
+                downs = a[9]
+                pillars += levela * level + levelb
+                ax += neighbours_map[bi+0]
+                bx += neighbours_map[bi+1]
+                ay += neighbours_map[bi+2]
+                by += neighbours_map[bi+3]
                 angle = (angle + neighbours_map[bi+4]) % 8
                 level += neighbours_map[bi+5]
-                straight = a[6] + neighbours_map[bi+6]
-                turns = a[7] + neighbours_map[bi+7]
-                ups = a[8] + neighbours_map[bi+8]
-                downs = a[9] + neighbours_map[bi+9]
+                straight += neighbours_map[bi+6]
+                turns += neighbours_map[bi+7]
+                ups += neighbours_map[bi+8]
+                downs += neighbours_map[bi+9]
                 if turns < angle < 7 - turns:
                     # It's not possible to turn back
                     # with the current number of turns.
@@ -143,18 +152,28 @@ def back_propagation(visited, material):
                 bi = angle*50 + segment*10
                 levela = PILLARS[2*segment]
                 levelb = PILLARS[2*segment + 1]
-                level = a[5] - neighbours_map[bi+5]
+                ax = a[0]
+                bx = a[1]
+                ay = a[2]
+                by = a[3]
+                level = a[5]
+                straight = a[6]
+                turns = a[7]
+                ups = a[8]
+                downs = a[9]
+                pillars = a[10]
+                level -= neighbours_map[bi+5]
                 # pillars have to be counted from the previous level
-                pillars = a[10] - (levela * level + levelb)
-                ax = a[0]-neighbours_map[bi+0]
-                bx = a[1]-neighbours_map[bi+1]
-                ay = a[2]-neighbours_map[bi+2]
-                by = a[3]-neighbours_map[bi+3]
+                pillars -= levela * level + levelb
+                ax -= neighbours_map[bi+0]
+                bx -= neighbours_map[bi+1]
+                ay -= neighbours_map[bi+2]
+                by -= neighbours_map[bi+3]
                 angle = (angle - neighbours_map[bi+4]) % 8
-                straight = a[6]-neighbours_map[bi+6]
-                turns = a[7]-neighbours_map[bi+7]
-                ups = a[8]-neighbours_map[bi+8]
-                downs = a[9]-neighbours_map[bi+9]
+                straight -= neighbours_map[bi+6]
+                turns -= neighbours_map[bi+7]
+                ups -= neighbours_map[bi+8]
+                downs -= neighbours_map[bi+9]
                 ps = (
                     ax, bx, ay, by,
                     angle,
