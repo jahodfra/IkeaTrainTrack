@@ -78,8 +78,9 @@ def main():
     tracks = map(Track, paths)
     tracks = [t for t in tracks if t.is_valid(material)]
     print('number of unique paths:', len(tracks))
-    for t in tracks[:10]:
+    for i, t in enumerate(tracks[:10], start=1):
         print(t.path)
+        t.draw('preview%02d.png' % i)
 
 
 if __name__ == '__main__':
