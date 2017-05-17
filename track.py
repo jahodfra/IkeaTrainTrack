@@ -158,7 +158,7 @@ class Track:
         image = Image.new('RGB', (w, h))
         draw = ImageDraw.Draw(image)
 
-        font = ImageFont.truetype(font='NunitoSans-Regular.ttf', size=FONT_SIZE)
+        font = ImageFont.truetype(font='data/NunitoSans-Regular.ttf', size=FONT_SIZE)
         draw.text((10, 10), self.path, font=font, fill=(255, 255, 255))
         sx, sy = transform((.0, .0))
         draw.arc((sx-5, sy-5, sx+5, sy+5), 0, 360, '#FF3333')

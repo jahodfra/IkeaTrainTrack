@@ -5,4 +5,5 @@ setup(
   name = 'Lillabo track solver',
   scripts = ['solver.py', 'track.py', 'collision.py'],
   ext_modules = cythonize("dynamic.pyx"),
+  data_files = ('data', ['data/*']),
 )
