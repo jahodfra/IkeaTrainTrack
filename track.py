@@ -9,7 +9,7 @@ import collision
 
 
 STRAIGHT_SIZE = 1.0
-TURN_SIZE = 2.0 - math.sqrt(2.0)
+TURN_SIZE = math.sqrt(2.0 - math.sqrt(2.0))
 
 
 class Track:
@@ -159,19 +159,17 @@ class Track:
         draw = ImageDraw.Draw(image)
 
         font = ImageFont.truetype(font='NunitoSans-Regular.ttf', size=FONT_SIZE)
-        draw.text((10,10), self.path, font=font, fill=(255,255,255))
+        draw.text((10, 10), self.path, font=font, fill=(255, 255, 255))
         sx, sy = transform((.0, .0))
         draw.arc((sx-5, sy-5, sx+5, sy+5), 0, 360, '#FF3333')
         for i, s in enumerate(self.path):
             # TODO: draw turns by arc
+            a = self.angle[i] * math.pi / 4.0
             if s == 'R':
-                a = (self.angle[i] + 0.5) * math.pi / 4.0
                 r = TURN_SIZE
             elif s == 'L':
-                a = (self.angle[i] - 0.5) * math.pi / 4.0
                 r = TURN_SIZE
             else:
-                a = self.angle[i+1] * math.pi / 4.0
                 r = STRAIGHT_SIZE
             level = self.level[i]
             if s == 'D':
@@ -196,7 +194,24 @@ class Track:
                 draw.line((x, y, x2, y2), fill=color)
                 draw.line((x, y, x3, y3), fill=color)
                 draw.line((x2, y2, x3, y3), fill=color)
+            elif s == 'L':
+                x, y = transform(pos[i])
+                sa = (self.angle[i] / 4.0 + 0.5) * math.pi
+                r = GRID_SIZE
+                sx = round(x - math.cos(sa) * r)
+                sy = round(y - math.sin(sa) * r)
+                d = self.angle[i] * 45 + 45
+                draw.arc((sx-r, sy-r, sx+r, sy+r), d, d + 45, fill=color)
+            elif s == 'R':
+                x, y = transform(pos[i])
+                sa = (self.angle[i] / 4.0 + 1.5) * math.pi
+                r = GRID_SIZE
+                sx = round(x - math.cos(sa) * r)
+                sy = round(y - math.sin(sa) * r)
+                d = self.angle[i] * 45 - 90
+                draw.arc((sx-r, sy-r, sx+r, sy+r), d, d + 45, fill=color)
             else:
+                assert s == 'S'
                 x, y = transform(pos[i])
                 x2 = round(x + math.cos(a) * r)
                 y2 = round(y + math.sin(a) * r)
