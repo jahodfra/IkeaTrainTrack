@@ -2,7 +2,9 @@
 Provides Track class
 """
 
+import collections
 import math
+import itertools
 from PIL import Image, ImageDraw, ImageFont
 
 import collision
@@ -12,6 +14,30 @@ STRAIGHT_SIZE = 1.0
 TURN_SIZE = math.sqrt(2.0 - math.sqrt(2.0))
 
 
+def shifts(path):
+    for i in range(len(path)):
+        yield path[i:] + path[:i]
+
+
+ROTATE_TRANSFORM = str.maketrans('RL', 'LR')
+def normalize_path(path):
+    # possible symmetries
+    # translational - generate all translations and choose the biggest
+    #                 lexicographycally
+    # rotational    - change left rotation to right and choose the biggest
+    #                 lexicographically
+    # reverse path  - change the direction
+    mirror_path = path.translate(ROTATE_TRANSFORM)
+    reversed_path = path[::-1]
+    reversed_mirror_path = mirror_path[::-1]
+    return min(itertools.chain(
+        shifts(path),
+        shifts(mirror_path),
+        shifts(reversed_path),
+        shifts(reversed_mirror_path)
+    ))
+
+
 class Track:
     def __init__(self, path):
         self.path = path
@@ -19,13 +45,73 @@ class Track:
         self._pos = None
         self._level = None
 
+    def __hash__(self):
+        return hash(self.path)
+
+    def __eq__(self, o):
+        return self.path == o.path
+
+    def __ne__(self, o):
+        return not self == o
+
+    def normalize(self):
+        return Track(normalize_path(self.path))
+
+    def _simplify(self):
+        path = self.path
+        lp = len(path)
+        def find_segment(match):
+            lm = len(match)
+            for i in range(lp):
+               if path[i:min(i+lm, lp)] + path[:max(i+lm-lp, 0)]  == match:
+                   yield i
+
+        def replace_segment(path, i, lm, replace):
+            return path[max(i+lm-lp, 0):i] + replace + path[i+lm:]
+
+        def replace_pair(match, replace):
+            lm = len(match)
+            for i in find_segment(match):
+                yield replace_segment(path, i, lm, replace)
+
+        def remove_pair(pair1, pair2):
+            occ1 = [[] for _ in range(8)]
+            occ2 = [[] for _ in range(8)]
+            for i in find_segment(pair1):
+                occ1[self.angle[i]].append(i)
+            for i in find_segment(pair2):
+                occ2[self.angle[i]].append(2)
+            for angle in range(8):
+                for a in occ1[angle]:
+                    for b in occ2[angle]:
+                        if a == b:
+                            continue
+                        elif a > b:
+                            a, b = b, a
+                        p = replace_segment(path, a, len(pair1), '')
+                        yield replace_segment(p, b - len(pair1), len(pair2), '')
+
+        # shorten bridges
+        yield from replace_pair('US', 'SU')
+        yield from replace_pair('SD', 'DS')
+
+        # shorten track
+        yield from remove_pair('S', 'S')
+        yield from remove_pair('RL', 'LR')
+        yield from remove_pair('SS', 'UD')
+        yield from remove_pair('UD', 'UD')
+
+    def simplify(self):
+        for p in self._simplify():
+            yield Track(p).normalize()
+
     @property
     def level(self):
         # Reconstruct height
         if self._level is None:
             level = [0]
             cl = 0
-            
+
             for s in self.path:
                 if s == 'U':
                     cl += 1
@@ -56,7 +142,7 @@ class Track:
         self._pos = []
         for s in self.path:
             self._pos.append((x, y))
-            self._angles.append(angle)
+            self._angles.append(angle % 8)
             if s == 'R':
                 a = (angle + 0.5) * math.pi / 4.0
                 angle += 1
