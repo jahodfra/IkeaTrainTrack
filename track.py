@@ -38,6 +38,11 @@ def normalize_path(path):
     ))
 
 
+def _replace_segment(path, i, lm, replace):
+    lp = len(path)
+    return path[max(i+lm-lp, 0):i] + replace + path[i+lm:]
+
+
 class Track:
     def __init__(self, path):
         self.path = path
@@ -57,49 +62,48 @@ class Track:
     def normalize(self):
         return Track(normalize_path(self.path))
 
-    def _simplify(self):
+    def _find_segments(self, match):
         path = self.path
-        lp = len(path)
-        def find_segment(match):
-            lm = len(match)
-            for i in range(lp):
-               if path[i:min(i+lm, lp)] + path[:max(i+lm-lp, 0)]  == match:
-                   yield i
+        lm = len(match)
+        lp = len(self.path)
+        for i in range(lp):
+           if path[i:min(i+lm, lp)] + path[:max(i+lm-lp, 0)]  == match:
+               yield i
 
-        def replace_segment(path, i, lm, replace):
-            return path[max(i+lm-lp, 0):i] + replace + path[i+lm:]
+    def _all_replacements(self, match, replace):
+        lm = len(match)
+        for i in self._find_segments(match):
+            yield _replace_segment(self.path, i, lm, replace)
 
-        def replace_pair(match, replace):
-            lm = len(match)
-            for i in find_segment(match):
-                yield replace_segment(path, i, lm, replace)
-
-        def remove_pair(pair1, pair2):
-            occ1 = [[] for _ in range(8)]
-            occ2 = [[] for _ in range(8)]
-            for i in find_segment(pair1):
-                occ1[self.angle[i]].append(i)
-            for i in find_segment(pair2):
-                occ2[self.angle[i]].append(2)
-            for angle in range(8):
-                for a in occ1[angle]:
-                    for b in occ2[angle]:
-                        if a == b:
+    def _shorten_track(self, pair1, pair2):
+        occ1 = [[] for _ in range(8)]
+        occ2 = [[] for _ in range(8)]
+        for i in self._find_segments(pair1):
+            occ1[self.angle[i]].append(i)
+        for i in self._find_segments(pair2):
+            occ2[self.angle[i]].append(i)
+        for angle in range(8):
+            for a in occ1[angle]:
+                for b in occ2[(angle+4) % 8]:
+                    assert a != b, 'same index in two directions'
+                    if a > b:
+                        if pair1 == pair2:
                             continue
-                        elif a > b:
-                            a, b = b, a
-                        p = replace_segment(path, a, len(pair1), '')
-                        yield replace_segment(p, b - len(pair1), len(pair2), '')
+                        a, b = b, a
+                    p = _replace_segment(self.path, a, len(pair1), '')
+                    yield _replace_segment(p, b - len(pair1), len(pair2), '')
 
+    def _simplify(self):
         # shorten bridges
-        yield from replace_pair('US', 'SU')
-        yield from replace_pair('SD', 'DS')
+        yield from self._all_replacements('US', 'SU')
+        yield from self._all_replacements('SD', 'DS')
 
         # shorten track
-        yield from remove_pair('S', 'S')
-        yield from remove_pair('RL', 'LR')
-        yield from remove_pair('SS', 'UD')
-        yield from remove_pair('UD', 'UD')
+        yield from self._shorten_track('S', 'S')
+        yield from self._shorten_track('RL', 'RL')
+        yield from self._shorten_track('LR', 'LR')
+        yield from self._shorten_track('SS', 'UD')
+        yield from self._shorten_track('UD', 'UD')
 
     def simplify(self):
         for p in self._simplify():
@@ -157,7 +161,7 @@ class Track:
             x += math.cos(a) * r
             y += -math.sin(a) * r
         self._pos.append((x, y))
-        self._angles.append(angle)
+        self._angles.append(angle % 8)
 
     def count_pillars(self):
         level = self.level
@@ -249,7 +253,6 @@ class Track:
         sx, sy = transform((.0, .0))
         draw.arc((sx-5, sy-5, sx+5, sy+5), 0, 360, '#FF3333')
         for i, s in enumerate(self.path):
-            # TODO: draw turns by arc
             a = self.angle[i] * math.pi / 4.0
             if s == 'R':
                 r = TURN_SIZE
