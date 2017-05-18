@@ -223,11 +223,11 @@ class Track:
         return True
 
     def draw(self, filename):
-        BORDER = 50
-        GRID_SIZE = 50
+        BORDER = 5
+        GRID_SIZE = 30
         FONT_SIZE = 20
         TICK_SIZE = 3
-        COLORS = ['#aaaaaa', '#aa11aa', '#aa1111']
+        COLORS = ['#333333', '#881188', '#aa1111']
 
         # Mirror coordinates by x axis.
         pos = [(x, -y) for x, y in self.pos]
@@ -245,11 +245,11 @@ class Track:
             return x, y
 
         # Create new image filled with black color.
-        image = Image.new('RGB', (w, h))
+        image = Image.new('RGB', (w, h), '#ffffff')
         draw = ImageDraw.Draw(image)
 
-        font = ImageFont.truetype(font='data/NunitoSans-Regular.ttf', size=FONT_SIZE)
-        draw.text((10, 10), self.path, font=font, fill=(255, 255, 255))
+        #font = ImageFont.truetype(font='data/NunitoSans-Regular.ttf', size=FONT_SIZE)
+        #draw.text((10, 10), self.path, font=font, fill=(255, 255, 255))
         sx, sy = transform((.0, .0))
         draw.arc((sx-5, sy-5, sx+5, sy+5), 0, 360, '#FF3333')
         for i, s in enumerate(self.path):

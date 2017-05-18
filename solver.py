@@ -1,5 +1,6 @@
 import argparse
 import collections
+import os
 import pickle
 import string
 
@@ -56,9 +57,17 @@ def main():
     can_be_simplified = lambda t: any(st in set_of_tracks for st in t.simplify())
     tracks = [t for t in tracks if not can_be_simplified(t)]
     print('number of unique paths:', len(tracks))
-    for i, t in enumerate(tracks[:10], start=1):
-        print(t.path)
-        t.draw('preview%02d.png' % i)
+    os.makedirs('report', exist_ok=True)
+    with open('report/index.html', 'w') as report:
+        report.write('<!doctype html>\n')
+        report.write('<body>\n')
+        report.write('<table>\n')
+        report.write('<tr><th>descr<th>image</tr>\n')
+        for i, t in enumerate(tracks[:100], start=1):
+            report.write('<tr><td>%s</td>' % t.path)
+            report.write('<td><img src="preview%02d.png"></td></tr>\n' % i)
+            t.draw('report/preview%02d.png' % i)
+        report.write('</table></body>\n')
 
 
 if __name__ == '__main__':
