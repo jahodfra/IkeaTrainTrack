@@ -14,14 +14,14 @@ STR_SHIFT = (
 
 
 R_SHIFT = (
-    (1, 0, 0, -1),
-    (0, 1, -1, 0),
-    (0, -1, -1, 0),
-    (-1, 0, 0, -1),
-    (-1, 0, 0, 1),
-    (0, -1, 1, 0),
-    (0, 1, 1, 0),
-    (1, 0, 0, 1),
+    ( 1,  0,  0, -1),
+    ( 0,  1, -1,  0),
+    ( 0, -1, -1,  0),
+    (-1,  0,  0, -1),
+    (-1,  0,  0,  1),
+    ( 0, -1,  1,  0),
+    ( 0,  1,  1,  0),
+    ( 1,  0,  0,  1),
 )
 
 
@@ -37,15 +37,15 @@ cdef int[10] PILLARS = [
 
 def _neighbours(angle):
     return [
-        STR_SHIFT[angle] + (0, 0, -1, 0, 0, 0),
-        STR_SHIFT[angle] + (0, 1, 0, 0, -1, 0),
-        STR_SHIFT[angle] + (0, -1, 0, 0, 0, -1),
-        R_SHIFT[angle]   + (1, 0, 0, -1, 0, 0),
-        R_SHIFT[angle-1] + (-1, 0, 0, -1, 0, 0),
+        STR_SHIFT[angle] + ( 0,  0, -1,  0,  0,  0),
+        STR_SHIFT[angle] + ( 0,  1,  0,  0, -1,  0),
+        STR_SHIFT[angle] + ( 0, -1,  0,  0,  0, -1),
+        R_SHIFT[angle]   + ( 1,  0,  0, -1,  0,  0),
+        R_SHIFT[angle-1] + (-1,  0,  0, -1,  0,  0),
     ]
 
 
-def dynamic_programming(material):
+def forward_search(material):
     cdef int levela, levelb, level, pillars, segment
     cdef int angle, straight, turns, ups, downs
     cdef int ax, bx, ay, by, bi
@@ -114,7 +114,7 @@ def dynamic_programming(material):
     return visited
 
 
-def back_propagation(visited, material):
+def backward_search(visited, material):
     cdef int levela, levelb, level, pillars, segment, bi, angle
     cdef int ax, bx, ay, by, straight, turns, ups, downs
     cdef int mstraight, mturns, mups, mdowns, mpillars
@@ -191,10 +191,10 @@ def back_propagation(visited, material):
 
 def find_all_paths(material):
     t = time.clock()
-    visited = dynamic_programming(material)
+    visited = forward_search(material)
     print('frw took {:.2f}s'.format(time.clock() - t))
     t = time.clock()
-    paths = back_propagation(visited, material)
+    paths = backward_search(visited, material)
     print('back took {:.2f}s'.format(time.clock() - t))
     return paths
 
