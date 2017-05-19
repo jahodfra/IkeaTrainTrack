@@ -70,10 +70,8 @@ def dynamic_programming(material):
     for _ in range(sum([material.straight, material.turns, material.ups, material.downs])):
         new_border = set()
         for a in border:
-            # alpha(pos(pillars(x))
-            # pillars(pos-1(alpha-1(y)))
-            angle = a[4]
             for segment in range(5):
+                angle = a[4]
                 bi = angle*50 + segment*10
                 levela = PILLARS[2*segment]
                 levelb = PILLARS[2*segment + 1]
