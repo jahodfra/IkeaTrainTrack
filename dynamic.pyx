@@ -172,6 +172,11 @@ def backward_search(visited, material):
                 turns -= neighbours_map[bi+7]
                 ups -= neighbours_map[bi+8]
                 downs -= neighbours_map[bi+9]
+                if (ax == 0 and bx == 0 and ay == 0 and by == 0 and angle == 0
+                   and level == 0 and straight == mstraight and turns == mturns
+                   and downs == mdowns and pillars == mpillars):
+                    final.append(path + segment_names[segment])
+                    continue
                 ps = (
                     ax, bx, ay, by,
                     angle,
@@ -179,11 +184,7 @@ def backward_search(visited, material):
                     straight, turns, ups, downs,
                     pillars
                 )
-                if (ax == 0 and bx == 0 and ay == 0 and by == 0 and angle == 0
-                   and level == 0 and straight == mstraight and turns == mturns
-                   and downs == mdowns and pillars == mpillars):
-                    final.append(path + segment_names[segment])
-                elif ps in visited:
+                if ps in visited:
                     new_paths.append((path + segment_names[segment], ps))
         paths = new_paths
     return final
