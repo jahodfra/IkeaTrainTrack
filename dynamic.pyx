@@ -96,7 +96,7 @@ def dynamic_programming(material):
                 turns += neighbours_map[bi+7]
                 ups += neighbours_map[bi+8]
                 downs += neighbours_map[bi+9]
-                if turns < angle < 7 - turns:
+                if turns < angle < 8 - turns:
                     # It's not possible to turn back
                     # with the current number of turns.
                     continue
