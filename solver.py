@@ -1,7 +1,6 @@
 import argparse
 import collections
 import os
-import pickle
 import string
 
 import dynamic
@@ -11,12 +10,21 @@ import track
 Material = collections.namedtuple('Material', 'straight turns ups, downs pillars')
 
 
-def compute_all_paths(material):
+def can_be_simplified(t, set_of_tracks):
+    return any(st in set_of_tracks for st in t.simplify())
+
+
+def compute_tracks(material):
     paths = dynamic.find_all_paths(material)
     print('number of paths:', len(paths))
     paths = set(map(track.normalize_path, paths))
     print('number of unique paths:', len(paths))
-    return paths
+    tracks = [track.Track(p) for p in paths]
+    tracks = [t for t in tracks if t.is_valid(material)]
+    set_of_tracks = set(tracks)
+    tracks = [t for t in tracks if not can_be_simplified(t, set_of_tracks)]
+    print('number of unique paths:', len(tracks))
+    return tracks
 
 
 def main():
@@ -45,18 +53,7 @@ def main():
         downs=args.downs,
         pillars=args.pillars)
 
-    filename = 'paths.pickle'
-    try:
-        paths = pickle.load(open(filename, 'rb'))
-    except IOError:
-        paths = compute_all_paths(material)
-        pickle.dump(paths, open(filename, 'wb'))
-    tracks = map(track.Track, paths)
-    tracks = [t for t in tracks if t.is_valid(material)]
-    set_of_tracks = set(tracks)
-    can_be_simplified = lambda t: any(st in set_of_tracks for st in t.simplify())
-    tracks = [t for t in tracks if not can_be_simplified(t)]
-    print('number of unique paths:', len(tracks))
+    tracks = compute_tracks(material)
     os.makedirs('report', exist_ok=True)
     with open('report/index.html', 'w') as report:
         report.write('<!doctype html>\n')
