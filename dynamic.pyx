@@ -104,7 +104,7 @@ def forward_search(material):
                     continue
                 if straight < 0 or turns < 0 or ups < 0 or downs < 0 or pillars < 0:
                     continue
-                if max(abs(ax), abs(bx), abs(ay), abs(by)) > straight + turns + ups + downs:
+                if max(abs(ax), abs(bx), abs(ay), abs(by)) > abs(straight + turns + ups + downs):
                     # It's not possible to return back
                     # with the current number of segments.
                     continue
