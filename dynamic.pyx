@@ -100,7 +100,7 @@ def forward_search(material):
                     # It's not possible to turn back
                     # with the current number of turns.
                     continue
-                if pillars < level or downs < level or level < 0:
+                if not (0 <= level <= downs):
                     continue
                 if straight < 0 or turns < 0 or ups < 0 or downs < 0 or pillars < 0:
                     continue
