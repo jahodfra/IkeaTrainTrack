@@ -1,4 +1,15 @@
+# distutils: language=c++
+#### distutils: sources=search.cpp
 import time
+from libcpp.unordered_set cimport unordered_set
+from libcpp.vector cimport vector
+from cython.operator cimport dereference
+
+cdef extern from "state.hpp":
+    cdef cppclass State:
+        State()
+        State(int ax, int bx, int ay, int by, int angle, int level, int straight, int turns, int ups, int downs, int pillars)
+        int ax, bx, ay, by, angle, level, straight, turns, ups, downs, pillars
 
 
 STR_SHIFT = (
@@ -45,18 +56,26 @@ def _neighbours(angle):
     ]
 
 
-def forward_search(material):
+def forward_search(m):
+    cdef unordered_set[State] visited
+    py_visited = set()
+    _forward_search(&visited, m.straight, m.turns, m.ups, m.downs, m.pillars)
+    for s in visited:
+        py_visited.add((s.ax, s.bx, s.ay, s.by, s.angle, s.level, s.straight, s.turns, s.ups, s.downs, s.pillars))
+    return py_visited
+
+cdef void _forward_search(unordered_set[State]* visited, int mstraight, int mturns, int mups, int mdowns, int mpillars):
     cdef int levela, levelb, level, pillars, segment
     cdef int angle, straight, turns, ups, downs
     cdef int ax, bx, ay, by, bi
+    cdef State ns
+    cdef vector[State] border, new_border;
     cdef int[400] neighbours_map
     # 8 * 5 * 10
     for angle in range(8):
         for segment, vect in enumerate(_neighbours(angle)):
             for i, n in enumerate(vect):
                 neighbours_map[angle*50+segment*10+i] = n
-    border = set()
-    #border.add(State(pos=Pos(0, 0, 0, 0), angle=0, level=0, material=material))
     # 7,7,7,7,3,3,5,5,5,5,5 = 28+6+25 = 59bit < 64bit
     # We can encode whole configuration into one uint64
     # ax, bx, ay, by, angle, level, ...
@@ -65,26 +84,25 @@ def forward_search(material):
     # ax, ay is position in the grid in multiples of sqrt(2)/2 ~ 0.71
     # bx, by is position in the grid in multiples of 1-sqrt(2)/2 ~ 0.29
 
-    border.add((0, 0, 0, 0, 0, 0, material.straight, material.turns, material.ups, material.downs, material.pillars))
-    visited = set()
-    for _ in range(sum([material.straight, material.turns, material.ups, material.downs])):
-        new_border = set()
+    border.push_back(State(0, 0, 0, 0, 0, 0, mstraight, mturns, mups, mdowns, mpillars))
+    for _ in range(mstraight + mturns + mups + mdowns):
+        new_border.clear()
         for a in border:
             for segment in range(5):
-                angle = a[4]
+                angle = a.angle
                 bi = angle*50 + segment*10
                 levela = PILLARS[2*segment]
                 levelb = PILLARS[2*segment + 1]
-                level = a[5]
-                pillars = a[10]
-                ax = a[0]
-                bx = a[1]
-                ay = a[2]
-                by = a[3]
-                straight = a[6]
-                turns = a[7]
-                ups = a[8]
-                downs = a[9]
+                level = a.level
+                pillars = a.pillars
+                ax = a.ax
+                bx = a.bx
+                ay = a.ay
+                by = a.by
+                straight = a.straight
+                turns = a.turns
+                ups = a.ups
+                downs = a.downs
                 pillars += levela * level + levelb
                 ax += neighbours_map[bi+0]
                 bx += neighbours_map[bi+1]
@@ -108,17 +126,23 @@ def forward_search(material):
                     # It's not possible to return back
                     # with the current number of segments.
                     continue
-                new_border.add((ax, bx, ay, by, angle, level, straight, turns, ups, downs, pillars))
-        visited.update(new_border)
+                ns = State(
+                    ax, bx, ay, by, angle, level,
+                    straight, turns, ups, downs, pillars)
+                if visited.find(ns) == visited.end():
+                    new_border.push_back(ns)
+                    visited.insert(ns)
         border = new_border
-    return visited
 
 
-def backward_search(visited, material):
+cdef backward_search(unordered_set[State]* visited, material):
     cdef int levela, levelb, level, pillars, segment, bi, angle
     cdef int ax, bx, ay, by, straight, turns, ups, downs
     cdef int mstraight, mturns, mups, mdowns, mpillars
     cdef int[400] neighbours_map
+    cdef unsigned int j;
+    cdef State ps, s
+    cdef vector[State] states, new_states;
     forward = {}
     for angle in range(8):
         forward[angle] = _neighbours(angle)
@@ -138,28 +162,31 @@ def backward_search(visited, material):
     paths = []
     final = []
     segment_names = 'SUDRL'
-    for s in visited:
-        if (s[0] == 0 and s[1] == 0 and s[2] == 0 and s[3] == 0 and s[4] == 0
-            and s[5] == 0):
-            paths.append(('', s))
+    for s in dereference(visited):
+        if (s.ax == 0 and s.bx == 0 and s.ay == 0 and s.by == 0 and s.angle == 0
+            and s.level == 0):
+            paths.append('')
+            states.push_back(s)
     while paths:
         new_paths = []
-        for path, a in paths:
+        new_states.clear()
+        for j in range(states.size()):
+            a = states[j]
             for segment in range(5):
-                angle = a[4]
+                angle = a.angle
                 bi = angle*50 + segment*10
                 levela = PILLARS[2*segment]
                 levelb = PILLARS[2*segment + 1]
-                ax = a[0]
-                bx = a[1]
-                ay = a[2]
-                by = a[3]
-                level = a[5]
-                straight = a[6]
-                turns = a[7]
-                ups = a[8]
-                downs = a[9]
-                pillars = a[10]
+                ax = a.ax
+                bx = a.bx
+                ay = a.ay
+                by = a.by
+                level = a.level
+                straight = a.straight
+                turns = a.turns
+                ups = a.ups
+                downs = a.downs
+                pillars = a.pillars
                 level -= neighbours_map[bi+5]
                 # pillars have to be counted from the previous level
                 pillars -= levela * level + levelb
@@ -175,27 +202,30 @@ def backward_search(visited, material):
                 if (ax == 0 and bx == 0 and ay == 0 and by == 0 and angle == 0
                    and level == 0 and straight == mstraight and turns == mturns
                    and downs == mdowns and pillars == mpillars):
-                    final.append(path + segment_names[segment])
+                    final.append(paths[j] + segment_names[segment])
                     continue
-                ps = (
+                ps = State(
                     ax, bx, ay, by,
                     angle,
                     level,
                     straight, turns, ups, downs,
                     pillars
                 )
-                if ps in visited:
-                    new_paths.append((path + segment_names[segment], ps))
+                if visited.find(ps) != visited.end():
+                    new_paths.append(paths[j] + segment_names[segment])
+                    new_states.push_back(ps)
         paths = new_paths
+        states = new_states
     return final
 
 
-def find_all_paths(material):
+def find_all_paths(m):
     t = time.clock()
-    visited = forward_search(material)
+    cdef unordered_set[State] visited
+    _forward_search(&visited, m.straight, m.turns, m.ups, m.downs, m.pillars)
     print('frw took {:.2f}s'.format(time.clock() - t))
     t = time.clock()
-    paths = backward_search(visited, material)
+    paths = backward_search(&visited, m)
     print('back took {:.2f}s'.format(time.clock() - t))
     return paths
 

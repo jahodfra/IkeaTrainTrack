@@ -2,6 +2,7 @@ import argparse
 import collections
 import os
 import string
+import time
 
 import dynamic
 import track
@@ -17,8 +18,10 @@ def can_be_simplified(t, set_of_tracks):
 def compute_tracks(material):
     paths = dynamic.find_all_paths(material)
     print('number of paths:', len(paths))
+    t = time.clock()
     paths = set(map(track.normalize_path, paths))
     print('number of unique paths:', len(paths))
+    print('normalization took {:.2f}s'.format(time.clock() - t))
     tracks = [track.Track(p) for p in paths]
     tracks = [t for t in tracks if t.is_valid(material)]
     set_of_tracks = set(tracks)
