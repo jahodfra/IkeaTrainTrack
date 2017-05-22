@@ -223,8 +223,8 @@ class Track:
         return True
 
     def draw(self, filename):
-        BORDER = 5
-        GRID_SIZE = 30
+        BORDER = 10
+        GRID_SIZE = 40
         FONT_SIZE = 20
         TICK_SIZE = 3
         COLORS = ['#333333', '#881188', '#aa1111']

@@ -30,6 +30,30 @@ def compute_tracks(material):
     return tracks
 
 
+def write_report(tracks):
+    os.makedirs('report', exist_ok=True)
+    with open('report/index.html', 'w') as report:
+        report.write('<!doctype html>\n')
+        report.write('<body>\n')
+        report.write('<table>\n')
+        report.write('''<tr>
+<th>descr<th>S<th>T<th>U<th>D<th>P<th>image
+</tr>\n''')
+        for i, t in enumerate(tracks[:100], start=1):
+            report.write('<tr><td>%s</td>' % t.path)
+            report.write('<td>{S}</td><td>{T}</td><td>{U}</td><td>{D}</td><td>{P}</td>'.format(
+                S=t.path.count('S'),
+                T=t.path.count('R') + t.path.count('L'),
+                U=t.path.count('U'),
+                D=t.path.count('D'),
+                P=t.count_pillars(),
+            ))
+            report.write('<td><img src="preview%02d.png"></td>' % i)
+            report.write('</tr>\n')
+            t.draw('report/preview%02d.png' % i)
+        report.write('</table></body>\n')
+
+
 def main():
     parser = argparse.ArgumentParser(description='find all closed paths')
     parser.add_argument(
@@ -57,17 +81,7 @@ def main():
         pillars=args.pillars)
 
     tracks = compute_tracks(material)
-    os.makedirs('report', exist_ok=True)
-    with open('report/index.html', 'w') as report:
-        report.write('<!doctype html>\n')
-        report.write('<body>\n')
-        report.write('<table>\n')
-        report.write('<tr><th>descr<th>image</tr>\n')
-        for i, t in enumerate(tracks[:100], start=1):
-            report.write('<tr><td>%s</td>' % t.path)
-            report.write('<td><img src="preview%02d.png"></td></tr>\n' % i)
-            t.draw('report/preview%02d.png' % i)
-        report.write('</table></body>\n')
+    write_report(tracks)
 
 
 if __name__ == '__main__':
