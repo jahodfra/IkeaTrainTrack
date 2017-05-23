@@ -15,11 +15,25 @@ def can_be_simplified(t, set_of_tracks):
     return any(st in set_of_tracks for st in t.simplify())
 
 
+def normalize_paths(paths):
+    filtered = []
+    paths = set(paths)
+    while paths:
+        path = paths.pop()
+        min_path = path
+        for symetric_path in track.all_symetries(path):
+            paths.discard(symetric_path)
+            if symetric_path < min_path:
+                min_path = symetric_path
+        filtered.append(min_path)
+    return filtered
+
+
 def compute_tracks(material):
     paths = dynamic.find_all_paths(material)
     print('number of paths:', len(paths))
     t = time.clock()
-    paths = set(map(track.normalize_path, paths))
+    paths = normalize_paths(paths)
     print('number of unique paths:', len(paths))
     print('normalization took {:.2f}s'.format(time.clock() - t))
     tracks = [track.Track(p) for p in paths]

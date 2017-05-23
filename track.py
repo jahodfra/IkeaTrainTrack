@@ -20,7 +20,7 @@ def shifts(path):
 
 
 ROTATE_TRANSFORM = str.maketrans('RL', 'LR')
-def normalize_path(path):
+def all_symetries(path):
     # possible symmetries
     # translational - generate all translations and choose the biggest
     #                 lexicographycally
@@ -30,12 +30,12 @@ def normalize_path(path):
     mirror_path = path.translate(ROTATE_TRANSFORM)
     reversed_path = path[::-1]
     reversed_mirror_path = mirror_path[::-1]
-    return min(itertools.chain(
+    return itertools.chain(
         shifts(path),
         shifts(mirror_path),
         shifts(reversed_path),
         shifts(reversed_mirror_path)
-    ))
+    )
 
 
 def _replace_segment(path, i, lm, replace):
@@ -60,7 +60,7 @@ class Track:
         return not self == o
 
     def normalize(self):
-        return Track(normalize_path(self.path))
+        return Track(min(all_symetries(self.path)))
 
     def _find_segments(self, match):
         path = self.path
