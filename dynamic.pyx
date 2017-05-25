@@ -1,6 +1,7 @@
 # distutils: language=c++
 #### distutils: sources=search.cpp
 import time
+from libcpp cimport bool
 from libcpp.unordered_set cimport unordered_set
 from libcpp.vector cimport vector
 from cython.operator cimport dereference
@@ -10,6 +11,7 @@ cdef extern from "state.hpp":
         State()
         State(int ax, int bx, int ay, int by, int angle, int level, int straight, int turns, int ups, int downs, int pillars)
         int ax, bx, ay, by, angle, level, straight, turns, ups, downs, pillars
+        bool operator==(const State&)
 
 
 STR_SHIFT = (
@@ -65,7 +67,7 @@ def forward_search(m):
     return py_visited
 
 cdef void _forward_search(unordered_set[State]* visited, int mstraight, int mturns, int mups, int mdowns, int mpillars):
-    cdef int levela, levelb, level, pillars, segment
+    cdef int level, pillars, segment
     cdef int angle, straight, turns, ups, downs
     cdef int ax, bx, ay, by, bi
     cdef State ns
@@ -76,9 +78,9 @@ cdef void _forward_search(unordered_set[State]* visited, int mstraight, int mtur
         for segment, vect in enumerate(_neighbours(angle)):
             for i, n in enumerate(vect):
                 neighbours_map[angle*50+segment*10+i] = n
-    # 7,7,7,7,3,3,5,5,5,5,5 = 28+6+25 = 59bit < 64bit
-    # We can encode whole configuration into one uint64
-    # ax, bx, ay, by, angle, level, ...
+    # State is composed of:
+    # ax, bx, ay, by, angle, level, straight, turns, ups, downs, pillars
+
     # Because sqrt(2) is irational number we have to track numbers in
     # the following base.
     # ax, ay is position in the grid in multiples of sqrt(2)/2 ~ 0.71
@@ -89,31 +91,19 @@ cdef void _forward_search(unordered_set[State]* visited, int mstraight, int mtur
         new_border.clear()
         for a in border:
             for segment in range(5):
-                angle = a.angle
-                bi = angle*50 + segment*10
-                levela = PILLARS[2*segment]
-                levelb = PILLARS[2*segment + 1]
+                bi = a.angle*50 + segment*10
                 level = a.level
-                pillars = a.pillars
-                ax = a.ax
-                bx = a.bx
-                ay = a.ay
-                by = a.by
-                straight = a.straight
-                turns = a.turns
-                ups = a.ups
-                downs = a.downs
-                pillars += levela * level + levelb
-                ax += neighbours_map[bi+0]
-                bx += neighbours_map[bi+1]
-                ay += neighbours_map[bi+2]
-                by += neighbours_map[bi+3]
-                angle = (angle + neighbours_map[bi+4]) % 8
+                pillars = a.pillars + PILLARS[2*segment] * level + PILLARS[2*segment + 1]
+                ax = a.ax + neighbours_map[bi+0]
+                bx = a.bx + neighbours_map[bi+1]
+                ay = a.ay + neighbours_map[bi+2]
+                by = a.by + neighbours_map[bi+3]
+                angle = (a.angle + neighbours_map[bi+4]) % 8
                 level += neighbours_map[bi+5]
-                straight += neighbours_map[bi+6]
-                turns += neighbours_map[bi+7]
-                ups += neighbours_map[bi+8]
-                downs += neighbours_map[bi+9]
+                straight = a.straight + neighbours_map[bi+6]
+                turns = a.turns + neighbours_map[bi+7]
+                ups = a.ups + neighbours_map[bi+8]
+                downs = a.downs + neighbours_map[bi+9]
                 if turns < angle < 8 - turns:
                     # It's not possible to turn back
                     # with the current number of turns.
@@ -136,12 +126,12 @@ cdef void _forward_search(unordered_set[State]* visited, int mstraight, int mtur
 
 
 cdef backward_search(unordered_set[State]* visited, material):
-    cdef int levela, levelb, level, pillars, segment, bi, angle
+    cdef int level, pillars, segment, bi, angle
     cdef int ax, bx, ay, by, straight, turns, ups, downs
     cdef int mstraight, mturns, mups, mdowns, mpillars
     cdef int[400] neighbours_map
-    cdef unsigned int j;
-    cdef State ps, s
+    cdef unsigned int j
+    cdef State ps, a, end_state
     cdef vector[State] states, new_states;
     forward = {}
     for angle in range(8):
@@ -162,55 +152,38 @@ cdef backward_search(unordered_set[State]* visited, material):
     paths = []
     final = []
     segment_names = 'SUDRL'
-    for s in dereference(visited):
-        if (s.ax == 0 and s.bx == 0 and s.ay == 0 and s.by == 0 and s.angle == 0
-            and s.level == 0):
+    for a in dereference(visited):
+        if (a.ax == 0 and a.bx == 0 and a.ay == 0 and a.by == 0 and a.angle == 0
+            and a.level == 0):
             paths.append('')
-            states.push_back(s)
+            states.push_back(a)
+    end_state = State(
+        0, 0, 0, 0, 0, 0, mstraight, mturns, mups, mdowns, mpillars)
     while paths:
         new_paths = []
         new_states.clear()
         for j in range(states.size()):
             a = states[j]
             for segment in range(5):
-                angle = a.angle
-                bi = angle*50 + segment*10
-                levela = PILLARS[2*segment]
-                levelb = PILLARS[2*segment + 1]
-                ax = a.ax
-                bx = a.bx
-                ay = a.ay
-                by = a.by
-                level = a.level
-                straight = a.straight
-                turns = a.turns
-                ups = a.ups
-                downs = a.downs
-                pillars = a.pillars
-                level -= neighbours_map[bi+5]
+                bi = a.angle*50 + segment*10
+                level = a.level - neighbours_map[bi+5]
                 # pillars have to be counted from the previous level
-                pillars -= levela * level + levelb
-                ax -= neighbours_map[bi+0]
-                bx -= neighbours_map[bi+1]
-                ay -= neighbours_map[bi+2]
-                by -= neighbours_map[bi+3]
-                angle = (angle - neighbours_map[bi+4]) % 8
-                straight -= neighbours_map[bi+6]
-                turns -= neighbours_map[bi+7]
-                ups -= neighbours_map[bi+8]
-                downs -= neighbours_map[bi+9]
-                if (ax == 0 and bx == 0 and ay == 0 and by == 0 and angle == 0
-                   and level == 0 and straight == mstraight and turns == mturns
-                   and downs == mdowns and pillars == mpillars):
+                ax = a.ax - neighbours_map[bi+0]
+                bx = a.bx - neighbours_map[bi+1]
+                ay = a.ay - neighbours_map[bi+2]
+                by = a.by - neighbours_map[bi+3]
+                angle = (a.angle - neighbours_map[bi+4]) % 8
+                straight = a.straight - neighbours_map[bi+6]
+                turns = a.turns - neighbours_map[bi+7]
+                ups = a.ups - neighbours_map[bi+8]
+                downs = a.downs - neighbours_map[bi+9]
+                pillars = a.pillars - PILLARS[2*segment] * level - PILLARS[2*segment + 1]
+                ps = State(
+                    ax, bx, ay, by, angle, level,
+                    straight, turns, ups, downs, pillars)
+                if ps == end_state:
                     final.append(paths[j] + segment_names[segment])
                     continue
-                ps = State(
-                    ax, bx, ay, by,
-                    angle,
-                    level,
-                    straight, turns, ups, downs,
-                    pillars
-                )
                 if visited.find(ps) != visited.end():
                     new_paths.append(paths[j] + segment_names[segment])
                     new_states.push_back(ps)
