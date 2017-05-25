@@ -1,6 +1,5 @@
 # distutils: language=c++
 #### distutils: sources=search.cpp
-import time
 from libcpp cimport bool
 from libcpp.unordered_set cimport unordered_set
 from libcpp.vector cimport vector
@@ -186,12 +185,7 @@ cdef backward_search(unordered_set[State]* visited, m):
 
 
 def find_all_paths(m):
-    t = time.clock()
     cdef unordered_set[State] visited
     _forward_search(&visited, m)
-    print('frw took {:.2f}s'.format(time.clock() - t))
-    t = time.clock()
-    paths = backward_search(&visited, m)
-    print('back took {:.2f}s'.format(time.clock() - t))
-    return paths
+    return backward_search(&visited, m)
 

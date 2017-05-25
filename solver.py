@@ -1,8 +1,5 @@
 import argparse
 import collections
-import os
-import string
-import time
 
 import dynamic
 import track
@@ -31,41 +28,12 @@ def normalize_paths(paths):
 
 def compute_tracks(material):
     paths = dynamic.find_all_paths(material)
-    print('number of paths:', len(paths))
-    t = time.clock()
     paths = normalize_paths(paths)
-    print('number of unique paths:', len(paths))
-    print('normalization took {:.2f}s'.format(time.clock() - t))
     tracks = [track.Track(p) for p in paths]
     tracks = [t for t in tracks if t.is_valid(material)]
     set_of_tracks = set(tracks)
     tracks = [t for t in tracks if not can_be_simplified(t, set_of_tracks)]
-    print('number of unique paths:', len(tracks))
     return tracks
-
-
-def write_report(tracks):
-    os.makedirs('report', exist_ok=True)
-    with open('report/index.html', 'w') as report:
-        report.write('<!doctype html>\n')
-        report.write('<body>\n')
-        report.write('<table>\n')
-        report.write('''<tr>
-<th>descr<th>S<th>T<th>U<th>D<th>P<th>image
-</tr>\n''')
-        for i, t in enumerate(tracks[:100], start=1):
-            report.write('<tr><td>%s</td>' % t.path)
-            report.write('<td>{S}</td><td>{T}</td><td>{U}</td><td>{D}</td><td>{P}</td>'.format(
-                S=t.path.count('S'),
-                T=t.path.count('R') + t.path.count('L'),
-                U=t.path.count('U'),
-                D=t.path.count('D'),
-                P=t.count_pillars(),
-            ))
-            report.write('<td><img src="preview%02d.png"></td>' % i)
-            report.write('</tr>\n')
-            t.draw('report/preview%02d.png' % i)
-        report.write('</table></body>\n')
 
 
 def main():
@@ -95,7 +63,8 @@ def main():
         pillars=args.pillars)
 
     tracks = compute_tracks(material)
-    write_report(tracks)
+    for t in tracks:
+        print(t.path)
 
 
 if __name__ == '__main__':
