@@ -1,7 +1,10 @@
+#!/usr/local/bin/python3
+
 """
 Provides Track class
 """
 
+import argparse
 import collections
 import math
 import itertools
@@ -222,7 +225,7 @@ class Track:
 
         return True
 
-    def draw(self, filename):
+    def to_image(self):
         BORDER = 10
         GRID_SIZE = 40
         FONT_SIZE = 20
@@ -313,4 +316,21 @@ class Track:
             y2 = round(y + math.sin(a + math.pi / 2.) * TICK_SIZE)
             draw.line((x1, y1, x2, y2), fill=color)
 
+        return image
+
+    def draw(self, filename):
+        image = self.to_image()
         image.save(filename)
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Display the track.")
+    parser.add_argument('track', help='The track which should be displayed.')
+    args = parser.parse_args()
+    track = Track(args.track)
+    image = track.to_image()
+    image.show()
+
+
+if __name__ == '__main__':
+    main()

@@ -1,3 +1,5 @@
+#!/usr/local/bin/python3
+
 import argparse
 import collections
 
@@ -5,7 +7,8 @@ import dynamic
 import track
 
 
-Material = collections.namedtuple('Material', 'straight turns ups, downs pillars')
+Material = collections.namedtuple(
+    'Material', 'straight turns ups, downs pillars')
 
 
 def can_be_simplified(t, set_of_tracks):
@@ -36,8 +39,16 @@ def compute_tracks(material):
     return tracks
 
 
+DESCRIPTION = """\
+Write out all enclosed path with given set of elements.
+Each path is written on a new line.
+Elements: S - straight segment, U - uphill segment, D - downhill segment,
+R - turn right, L - turn left\
+"""
+
+
 def main():
-    parser = argparse.ArgumentParser(description='find all closed paths')
+    parser = argparse.ArgumentParser(description=DESCRIPTION)
     parser.add_argument(
         '--turns',
         dest='turns', type=int, default=12, help='number of turn segments')

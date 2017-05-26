@@ -1,7 +1,9 @@
+#!/usr/local/bin/python3
 """
 Render all tracks from the input into html page.
 """
 
+import argparse
 import sys
 import os
 
@@ -32,7 +34,15 @@ def write_report(tracks):
         report.write('</table></body>\n')
 
 
+DESCRIPTION = """\
+Take tracks from standard input and print them out to html page.
+Each track should be provided on a new line.
+"""
+
+
 def main():
+    parser = argparse.ArgumentParser(description=DESCRIPTION)
+    args = parser.parse_args()
     tracks = []
     for line in sys.stdin:
         path = line.strip()
