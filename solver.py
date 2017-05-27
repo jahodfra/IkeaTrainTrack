@@ -11,10 +11,6 @@ Material = collections.namedtuple(
     'Material', 'straight turns ups, downs pillars')
 
 
-def can_be_simplified(t, set_of_tracks):
-    return any(st in set_of_tracks for st in t.simplify())
-
-
 def normalize_paths(paths):
     filtered = []
     paths = set(paths)
@@ -34,8 +30,6 @@ def compute_tracks(material):
     paths = normalize_paths(paths)
     tracks = [track.Track(p) for p in paths]
     tracks = [t for t in tracks if t.is_valid(material)]
-    set_of_tracks = set(tracks)
-    tracks = [t for t in tracks if not can_be_simplified(t, set_of_tracks)]
     return tracks
 
 

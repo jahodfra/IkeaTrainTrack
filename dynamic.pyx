@@ -1,5 +1,4 @@
 # distutils: language=c++
-#### distutils: sources=search.cpp
 from libcpp cimport bool
 from libcpp.unordered_set cimport unordered_set
 from libcpp.vector cimport vector
