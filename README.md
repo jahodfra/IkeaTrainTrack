@@ -12,6 +12,7 @@ sudo pip3 install Cython
 python3 setup.py build_ext --inplace
 ```
 
+## Usage
 To print all enclosed tracks:
 ```bash
 python3 solver.py --turns=12 --straight=4 --ups=2 --downs=2 --pillars=4 >tracks
